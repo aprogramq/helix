@@ -1,0 +1,93 @@
+2025-12-01T20:26:26.001 helix_view::document [ERROR] History { 
+revisions: [
+    Revision { 
+        parent: 0, 
+        last_child: Some(1), 
+        transaction: Transaction { 
+            changes: ChangeSet {
+                changes: [], 
+                len: 0, 
+                len_after: 0 }, 
+            selection: None }, 
+        inversion: Transaction { 
+            changes: ChangeSet { 
+                changes: [], 
+                len: 0, 
+                len_after: 0 }, 
+            selection: None }, 
+        timestamp: Instant { 
+            tv_sec: 14037, 
+            tv_nsec: 105511832 }, 
+        Revision { 
+            parent: 0, 
+            last_child: Some(2), 
+            transaction: Transaction { 
+                changes: ChangeSet {
+                    changes: [
+                        Insert("Hello"), 
+                        Retain(1)], 
+                    len: 1, 
+                    len_after: 6 }, 
+                selection: Some(Selection { 
+                    ranges: [
+                        Range { 
+                            anchor: 6, 
+                            head: 5, 
+                            old_visual_position: None }], 
+                    primary_index: 0 }) }, 
+            inversion: Transaction { 
+                changes: ChangeSet { 
+                    changes: [
+                        Delete(5),
+                        Retain(1)], 
+                    len: 6, 
+                    len_after: 1 }, 
+                selection: Some(Selection { 
+                    ranges: [
+                        Range { 
+                            anchor: 1, 
+                            head: 0, 
+                            old_visual_position: None }], 
+                    primary_index: 0 }) }, 
+            timestamp: Instant { 
+                tv_sec: 14077, 
+                tv_nsec: 242247917 } }, 
+            Revision { 
+                parent: 1,
+                last_child: None,
+                transaction: Transaction { 
+                    changes: ChangeSet { 
+                        changes: [
+                            Retain(5), 
+                            Insert("\nWorld"), 
+                            Retain(1)], 
+                        len: 6, 
+                        len_after: 12 }, 
+                    selection: Some(Selection { 
+                        ranges: [
+                            Range { 
+                                anchor: 11, 
+                                head: 12, 
+                                old_visual_position: None }], 
+                        primary_index: 0 }) }, 
+                inversion: Transaction { 
+                    changes: ChangeSet { 
+                        changes: [
+                            Retain(5), 
+                            Delete(6), 
+                            Retain(1)], 
+                        len: 12, 
+                        len_after: 6 }, 
+                    selection: Some(Selection {
+                        ranges: [
+                            Range { 
+                                anchor: 6,
+                                head: 5, 
+                                old_visual_position: None }], 
+                        primary_index: 0 }) }, 
+            timestamp: Instant { 
+                tv_sec: 14079, 
+                tv_nsec: 95815000 } }], 
+        current: 1 }
+
+
