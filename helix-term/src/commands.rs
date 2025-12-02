@@ -3143,15 +3143,15 @@ fn file_explorer_in_current_buffer_directory(cx: &mut Context) {
         Some(path) => path,
         None => {
             let cwd = helix_stdx::env::current_working_dir();
-            if !cwd.exists() {
-                cx.editor.set_error(
-                    "Current buffer has no parent and current working directory does not exist",
-                );
-                return;
-            }
-            cx.editor.set_error(
-                "Current buffer has no parent, opening file explorer in current working directory",
-            );
+            // if !cwd.exists() {
+            //     cx.editor.set_error(
+            //         "Current buffer has no parent and current working directory does not exist",
+            //     );
+            //     return;
+            // }
+            // cx.editor.set_error(
+            //     "Current buffer has no parent, opening file explorer in current working directory",
+            // );
             cwd
         }
     };
