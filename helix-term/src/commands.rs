@@ -3150,7 +3150,7 @@ fn file_explorer_in_current_buffer_directory(cx: &mut Context) {
             //     return;
             // }
             // cx.editor.set_error(
-            //     "Current buffer has no parent, opening file explorer in current working directory",
+            //    "Current buffer has no parent, opening file explorer in current working directory",
             // );
             cwd
         }
