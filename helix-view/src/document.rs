@@ -1003,8 +1003,14 @@ impl Document {
         let undofile_enabled = self.config.load().undofile;
         let (history, uf_path) = if undofile_enabled {
             let history = self.history.get_mut().clone();
-            let undofile_path = self.undo_file()?.unwrap();
-            (Some(history), Some(undofile_path))
+            match self.undo_file() {
+                Ok(Some(undofile_path)) => (Some(history), Some(undofile_path)),
+                Ok(None) => {
+                    log::warn!("Undofile not created: document has no path.");
+                    (None, None)
+                }
+                Err(e) => return Err(e), // Propagate the error
+            }
         } else {
             (None, None)
         };
@@ -1147,28 +1153,30 @@ impl Document {
             write_result?;
 
             let uf_result = if undofile_enabled {
-                let path_ = path.clone();
-                let uf_path_ = uf_path.clone().unwrap();
+                if let Some(uf_path_) = uf_path.clone() {
+                    let path_ = path.clone();
+                    spawn_blocking(move || -> anyhow::Result<()> {
+                        let mut uf = std::fs::OpenOptions::new()
+                            .write(true)
+                            .read(true)
+                            .create(true)
+                            .open(&uf_path_)?;
 
-                spawn_blocking(move || -> anyhow::Result<()> {
-                    let mut uf = std::fs::OpenOptions::new()
-                        .write(true)
-                        .read(true)
-                        .create(true)
-                        .open(&uf_path_)?;
+                        // Always truncate the file to rewrite the entire history.
+                        // This ensures a single, consistent header and prevents corruption.
+                        uf.set_len(0)?;
+                        let offset = 0; // Always start from offset 0 when rewriting the entire file.
 
-                    // Always truncate the file to rewrite the entire history.
-                    // This ensures a single, consistent header and prevents corruption.
-                    uf.set_len(0)?;
-                    let offset = 0; // Always start from offset 0 when rewriting the entire file.
-
-                    history
-                        .unwrap()
-                        .serialize(&mut uf, &path_, current_rev, offset)?;
-                    copy_metadata(&path_, &uf_path_)?;
+                        history
+                            .unwrap()
+                            .serialize(&mut uf, &path_, current_rev, offset)?;
+                        copy_metadata(&path_, &uf_path_)?;
+                        Ok(())
+                    })
+                    .await?
+                } else {
                     Ok(())
-                })
-                .await?
+                }
             } else {
                 Ok(())
             };
@@ -1324,11 +1332,7 @@ impl Document {
             let escaped_path = helix_stdx::path::escape_path(path);
             undo_dir.join(escaped_path)
         });
-        if res != None {
-            Ok(res)
-        } else {
-            Err(Error::msg("Empty buffer"))
-        }
+        Ok(res)
     }
 
     pub fn load_undofile(&mut self) -> anyhow::Result<()> {
