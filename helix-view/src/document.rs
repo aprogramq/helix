@@ -995,12 +995,17 @@ impl Document {
         let undofile_enabled = self.config.load().undofile;
         let (history, uf_path) = if undofile_enabled {
             let history = self.history.get_mut().clone();
-            let undofile_path = self.undo_file()?.unwrap();
-            (Some(history), Some(undofile_path))
+            match self.undo_file() {
+                Ok(Some(undofile_path)) => (Some(history), Some(undofile_path)),
+                Ok(None) => {
+                    log::warn!("Undofile not created: document has no path.");
+                    (None, None)
+                },
+                Err(e) => return Err(e), // Propagate the error
+            }
         } else {
             (None, None)
         };
-        let last_saved_revision = self.get_last_saved_revision();
 
         let identifier = self.path().map(|_| self.identifier());
         let language_servers: Vec<_> = self.language_servers.values().cloned().collect();
@@ -1055,21 +1060,6 @@ impl Document {
                     "Path is read only"
                 ));
             }
-            // TODO: Decide on how to do error handling. IO errors are ok. Invalid undofile is not
-            let has_valid_undofile = if undofile_enabled {
-                let path_ = path.clone();
-                let uf_path_ = uf_path.clone();
-                spawn_blocking(move || -> anyhow::Result<bool> {
-                    Ok(helix_core::history::History::is_valid(
-                        &mut std::fs::File::open(uf_path_.unwrap())?,
-                        &path_,
-                    ))
-                })
-                .await?
-                .unwrap_or(false)
-            } else {
-                false
-            };
 
             // Assume it is a hardlink to prevent data loss if the metadata cant be read (e.g. on certain Windows configurations)
             let is_hardlink = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(2) > 1;
@@ -1155,29 +1145,30 @@ impl Document {
             write_result?;
 
             let uf_result = if undofile_enabled {
-                let path_ = path.clone();
-                let uf_path_ = uf_path.clone().unwrap();
+                if let Some(uf_path_) = uf_path.clone() {
+                    let path_ = path.clone();
+                    spawn_blocking(move || -> anyhow::Result<()> {
+                        let mut uf = std::fs::OpenOptions::new()
+                            .write(true)
+                            .read(true)
+                            .create(true)
+                            .open(&uf_path_)?;
 
-                spawn_blocking(move || -> anyhow::Result<()> {
-                    let mut uf = std::fs::OpenOptions::new()
-                        .write(true)
-                        .read(true)
-                        .create(true)
-                        .open(&uf_path_)?;
-
-                    let offset = if has_valid_undofile {
-                        last_saved_revision
-                    } else {
+                        // Always truncate the file to rewrite the entire history.
+                        // This ensures a single, consistent header and prevents corruption.
                         uf.set_len(0)?;
-                        0
-                    };
-                    history
-                        .unwrap()
-                        .serialize(&mut uf, &path_, current_rev, offset)?;
-                    copy_metadata(&path_, &uf_path_)?;
+                        let offset = 0; // Always start from offset 0 when rewriting the entire file.
+
+                        history
+                            .unwrap()
+                            .serialize(&mut uf, &path_, current_rev, offset)?;
+                        copy_metadata(&path_, &uf_path_)?;
+                        Ok(())
+                    })
+                    .await?
+                } else {
                     Ok(())
-                })
-                .await?
+                }
             } else {
                 Ok(())
             };
@@ -1704,6 +1695,8 @@ impl Document {
             self.changes = ChangeSet::new(self.text().slice(..));
             // Sync with changes with the jumplist selections.
             view.sync_changes(self);
+            self.reset_modified();
+            self.pickup_last_saved_time();
         }
         success
     }
