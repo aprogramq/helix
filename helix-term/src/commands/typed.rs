@@ -211,7 +211,7 @@ fn buffer_close_by_ids_impl(
     Ok(())
 }
 
-fn buffer_gather_paths_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> {
+fn buffer_gather_ids_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> {
     // No arguments implies current document
     if args.is_empty() {
         let doc_id = view!(editor).doc;
@@ -227,7 +227,8 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> 
 
             if doc.id().to_string() == arg {
                 Some(doc.id())
-            } else if doc.path().map(|p| p.as_path()) == arg_path || doc.relative_path() == arg_path{
+            } else if doc.path().map(|p| p.as_path()) == arg_path || doc.relative_path() == arg_path
+            {
                 Some(doc.id())
             } else {
                 None
@@ -259,7 +260,7 @@ fn buffer_close(
         return Ok(());
     }
 
-    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    let document_ids = buffer_gather_ids_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
@@ -272,7 +273,7 @@ fn force_buffer_close(
         return Ok(());
     }
 
-    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    let document_ids = buffer_gather_ids_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
@@ -540,7 +541,7 @@ fn write_buffer_close(
         },
     )?;
 
-    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    let document_ids = buffer_gather_ids_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
@@ -562,7 +563,7 @@ fn force_write_buffer_close(
         },
     )?;
 
-    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    let document_ids = buffer_gather_ids_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
@@ -2690,6 +2691,38 @@ fn yank_diagnostic(
     Ok(())
 }
 
+fn reload_undofile(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let doc = doc_mut!(cx.editor);
+    doc.load_undofile()?;
+
+    Ok(())
+}
+
+fn delete_undofile(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let doc = doc!(cx.editor);
+    if let Some(path) = doc.undo_file()? {
+        std::fs::remove_file(path)?;
+    }
+
+    Ok(())
+}
+
 fn read(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -3764,6 +3797,31 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
         fun: yank_diagnostic,
+        completer: CommandCompleter::all(completers::register),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+        TypableCommand {
+        // Not named reload-history so people don't accidentally call delete-undofile
+        name: "history-reload",
+        aliases: &[],
+        doc: "Prepends undofile history to current history.",
+        fun: reload_undofile,
+        // Опасно
+        completer: CommandCompleter::all(completers::register),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "delete-undofile",
+        aliases: &[],
+        doc: "Delete undofile associated with the currently focused document",
+        fun: delete_undofile,
+        // Опасно
         completer: CommandCompleter::all(completers::register),
         signature: Signature {
             positionals: (0, Some(1)),

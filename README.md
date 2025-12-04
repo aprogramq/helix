@@ -1,5 +1,4 @@
 <div align="center">
-
 <h1>
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="logo_dark.svg">
