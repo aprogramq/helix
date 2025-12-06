@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use arc_swap::{ArcSwap, ArcSwapAny};
 use helix_core::syntax;
 use helix_lsp::{jsonrpc, LanguageServerId};
@@ -20,7 +21,6 @@ use super::Context;
 
 #[cfg(feature = "steel")]
 pub mod steel;
-
 pub enum PluginSystemKind {
     None,
     #[cfg(feature = "steel")]
