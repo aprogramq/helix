@@ -4649,24 +4649,41 @@ pub mod insert {
 
 fn undo(cx: &mut Context) {
     let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    for _ in 0..count {
-        if !doc.undo(view) {
-            cx.editor.set_status("Already at oldest change");
-            break;
+
+    let doc_id;
+    let doc_path;
+    {
+        let (view, doc) = current!(cx.editor);
+        doc_id = doc.id();
+        doc_path = doc.path().cloned().unwrap();
+
+        for _ in 0..count {
+            if !doc.undo(view) {
+                cx.editor.set_status("Already at oldest change");
+                break;
+            }
         }
     }
+    let _ = cx.editor.save(doc_id, Some(doc_path), true);
 }
 
 fn redo(cx: &mut Context) {
     let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    for _ in 0..count {
-        if !doc.redo(view) {
-            cx.editor.set_status("Already at newest change");
-            break;
+
+    let doc_id;
+    let doc_path;
+    {
+        let (view, doc) = current!(cx.editor);
+        doc_id = doc.id();
+        doc_path = doc.path().cloned().unwrap();
+        for _ in 0..count {
+            if !doc.redo(view) {
+                cx.editor.set_status("Already at newest change");
+                break;
+            }
         }
     }
+    let _ = cx.editor.save(doc_id, Some(doc_path), true);
 }
 
 fn earlier(cx: &mut Context) {
