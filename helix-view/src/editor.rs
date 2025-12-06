@@ -1152,7 +1152,7 @@ impl Default for Config {
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
-            undofile: true,
+            undofile: false,
 
             #[cfg(feature = "steel")]
             enable_steel: true,
